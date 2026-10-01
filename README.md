@@ -3,10 +3,10 @@
 The Miro board's Act 2, Round 1 in code: an event log with no subscriptions, where **every read model is handed every event**.
 
 ```
-mvn test
+./mvnw test
 ```
 
-Needs Java 21 or later.
+Needs Java 25 or later.
 
 ## What's here
 
@@ -33,4 +33,4 @@ assertThat(bookedDates.bookedDates())
 
 ## Your turn
 
-Write `ConcertSales` and `MyTickets`, test first. The `solution` branch has one version of each.
+Write `ConcertSales` and `MyTickets`, test first. Their test classes are waiting, empty, in `src/test`.
