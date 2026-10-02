@@ -1,4 +1,8 @@
-package dev.ted.jitterticket.act2;
+package dev.ted.jitterticket.act2.readmodel;
+
+import dev.ted.jitterticket.act2.SequencedEvent;
+import dev.ted.jitterticket.act2.event.ConcertRescheduled;
+import dev.ted.jitterticket.act2.event.ConcertScheduled;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -15,10 +19,12 @@ public class BookedDates implements ReadModel {
     }
 
     private final Map<String, BookedDate> bookedDatesByConcertId = new LinkedHashMap<>();
+    private long lastSequenceNumber = 0;
 
     @Override
-    public void apply(Event event) {
-        switch (event) {
+    public void apply(SequencedEvent sequencedEvent) {
+        lastSequenceNumber = sequencedEvent.sequenceNumber();
+        switch (sequencedEvent.event()) {
             case ConcertScheduled scheduled -> bookedDatesByConcertId.put(
                     scheduled.concertId(),
                     new BookedDate(scheduled.showDateTime().toLocalDate(),
@@ -40,5 +46,10 @@ public class BookedDates implements ReadModel {
         return bookedDatesByConcertId.values().stream()
                                      .sorted(Comparator.comparing(BookedDate::date))
                                      .toList();
+    }
+
+    @Override
+    public long lastSequenceNumber() {
+        return lastSequenceNumber;
     }
 }

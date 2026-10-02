@@ -1,4 +1,4 @@
-package dev.ted.jitterticket.act2;
+package dev.ted.jitterticket.act2.event;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
