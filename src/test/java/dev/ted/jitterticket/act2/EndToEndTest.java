@@ -1,16 +1,13 @@
 package dev.ted.jitterticket.act2;
 
 import dev.ted.jitterticket.act2.command.CommandExecutor;
+import dev.ted.jitterticket.act2.command.DateAlreadyBookedException;
 import dev.ted.jitterticket.act2.command.ExecutionResult;
-import dev.ted.jitterticket.act2.command.PurchaseTickets;
-import dev.ted.jitterticket.act2.command.PurchaseTicketsRequest;
-import dev.ted.jitterticket.act2.command.RegisterCustomer;
-import dev.ted.jitterticket.act2.command.RegisterCustomerRequest;
-import dev.ted.jitterticket.act2.command.RescheduleConcert;
-import dev.ted.jitterticket.act2.command.RescheduleConcertRequest;
-import dev.ted.jitterticket.act2.command.ScheduleConcert;
-import dev.ted.jitterticket.act2.command.ScheduleConcertRequest;
-import dev.ted.jitterticket.act2.event.TicketsSold;
+import dev.ted.jitterticket.act2.command.PurchaseTicketsCommand;
+import dev.ted.jitterticket.act2.command.RegisterCustomerCommand;
+import dev.ted.jitterticket.act2.command.RescheduleConcertCommand;
+import dev.ted.jitterticket.act2.command.ScheduleConcertCommand;
+import dev.ted.jitterticket.act2.event.ConcertRescheduled;
 import dev.ted.jitterticket.act2.readmodel.AvailableConcerts;
 import dev.ted.jitterticket.act2.readmodel.BookedDates;
 import org.junit.jupiter.api.Test;
@@ -20,10 +17,11 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The whole loop, the way the board plays it:
- * a command runs, its event is appended to the log,
+ * a command is executed, its event is appended to the log,
  * the log hands it to every read model, and the read models show the result.
  */
 class EndToEndTest {
@@ -31,7 +29,7 @@ class EndToEndTest {
     private final EventLog eventLog = new EventLog();
     private final AvailableConcerts availableConcerts = new AvailableConcerts();
     private final BookedDates bookedDates = new BookedDates();
-    private final CommandExecutor commandExecutor = new CommandExecutor(eventLog);
+    private final CommandExecutor commandExecutor = new CommandExecutor(eventLog, bookedDates, availableConcerts);
 
     EndToEndTest() {
         eventLog.register(availableConcerts);
@@ -60,11 +58,8 @@ class EndToEndTest {
         scheduleCosmicDrift();
 
         // WHEN
-        commandExecutor.execute(
-                new RescheduleConcert(),
-                new RescheduleConcertRequest(
-                        "ct-1", LocalDateTime.of(2026, 11, 21, 19, 30), LocalTime.of(18, 30)),
-                bookedDates.lastSequenceNumber());
+        assertAppended(commandExecutor.execute(new RescheduleConcertCommand(
+                "ct-1", LocalDateTime.of(2026, 11, 21, 19, 30), LocalTime.of(18, 30))));
 
         // THEN
         assertThat(availableConcerts.availableConcerts())
@@ -76,21 +71,45 @@ class EndToEndTest {
     }
 
     @Test
+    void rescheduleConcertToLaterTimeOnSameDay_ConcertRescheduledAppended() {
+        // GIVEN: Cosmic Drift is on 2026-11-14 at 20:00
+        scheduleCosmicDrift();
+
+        // WHEN: it moves to 21:00 on the same day
+        ExecutionResult result = commandExecutor.execute(new RescheduleConcertCommand(
+                "ct-1", LocalDateTime.of(2026, 11, 14, 21, 0), LocalTime.of(20, 0)));
+
+        // THEN: its own booking doesn't block it
+        assertThat(result)
+                .isEqualTo(new ExecutionResult.Appended(new SequencedEvent(
+                        2, new ConcertRescheduled(
+                                "ct-1", LocalDateTime.of(2026, 11, 14, 21, 0), LocalTime.of(20, 0)))));
+    }
+
+    @Test
+    void rescheduleConcertOntoAnotherConcertsDate_ThrowsDateAlreadyBookedAndNothingAppended() {
+        // GIVEN: Cosmic Drift on 2026-11-14, Lyrical Storm on 2026-12-05
+        scheduleCosmicDrift();
+        scheduleLyricalStorm();
+
+        // WHEN / THEN
+        assertThatThrownBy(() -> commandExecutor.execute(new RescheduleConcertCommand(
+                "ct-1", LocalDateTime.of(2026, 12, 5, 19, 0), LocalTime.of(18, 0))))
+                .isInstanceOf(DateAlreadyBookedException.class);
+        assertThat(eventLog.lastSequenceNumber())
+                .isEqualTo(2);
+    }
+
+    @Test
     void purchaseSomeTickets_ConcertStillAvailable() {
         // GIVEN
         scheduleCosmicDrift();
         registerKit();
 
-        // WHEN: the Buy Tickets screen was built from Available Concerts
-        ExecutionResult result = commandExecutor.execute(
-                new PurchaseTickets("t-1"),
-                new PurchaseTicketsRequest("ct-1", "cu-1", 6),
-                availableConcerts,
-                availableConcerts.lastSequenceNumber());
+        // WHEN
+        purchase("ct-1", "cu-1", "t-1", 6);
 
         // THEN
-        assertThat(result)
-                .isInstanceOf(ExecutionResult.Appended.class);
         assertThat(availableConcerts.availableConcerts())
                 .extracting(AvailableConcerts.Concert::concertId)
                 .containsExactly("ct-1");
@@ -103,7 +122,7 @@ class EndToEndTest {
         registerKit();
 
         // WHEN
-        purchase("t-1", "ct-2", "cu-1", 20);
+        purchase("ct-2", "cu-1", "t-1", 20);
 
         // THEN
         assertThat(availableConcerts.availableConcerts())
@@ -111,42 +130,16 @@ class EndToEndTest {
     }
 
     @Test
-    void purchaseFromOutOfDateScreen_ConflictAndNoTicketsSold() {
-        // GIVEN: the Buy Tickets screen is built...
-        scheduleCosmicDrift();
-        long screenBuiltAt = availableConcerts.lastSequenceNumber();
-        // ...then someone registers before the purchase is submitted
-        registerKit();
-
-        // WHEN
-        ExecutionResult result = commandExecutor.execute(
-                new PurchaseTickets("t-1"),
-                new PurchaseTicketsRequest("ct-1", "cu-1", 6),
-                availableConcerts,
-                screenBuiltAt);
-
-        // THEN
-        assertThat(result)
-                .isEqualTo(new ExecutionResult.Conflict(1, 2));
-        assertThat(eventLog.events())
-                .extracting(SequencedEvent::event)
-                .noneMatch(event -> event instanceof TicketsSold);
-    }
-
-    @Test
     void scriptedRunSeq1To8PlayedAsCommands_LogMatchesTheBoard() {
         // WHEN: the Command Desk plays seq 1 to 8
         scheduleCosmicDrift();
-        assertAppended(commandExecutor.execute(
-                new RescheduleConcert(),
-                new RescheduleConcertRequest(
-                        "ct-1", LocalDateTime.of(2026, 11, 21, 19, 30), LocalTime.of(18, 30)),
-                eventLog.lastSequenceNumber()));
+        assertAppended(commandExecutor.execute(new RescheduleConcertCommand(
+                "ct-1", LocalDateTime.of(2026, 11, 21, 19, 30), LocalTime.of(18, 30))));
         scheduleLyricalStorm();
         registerKit();
-        purchase("t-1", "ct-1", "cu-1", 6);
+        purchase("ct-1", "cu-1", "t-1", 6);
         register("cu-2", "ted@example.com");
-        purchase("t-2", "ct-2", "cu-2", 8);
+        purchase("ct-2", "cu-2", "t-2", 8);
         register("cu-3", "mara@example.com");
 
         // THEN: the log is the Scripted Run...
@@ -165,8 +158,8 @@ class EndToEndTest {
                 .isEqualTo(8);
     }
 
-    // Each helper submits from a screen that is up to date with the log,
-    // and fails the test straight away if the event wasn't appended.
+    // Each helper executes a command and fails the test straight away
+    // if the event wasn't appended.
 
     private static void assertAppended(ExecutionResult result) {
         assertThat(result)
@@ -174,23 +167,19 @@ class EndToEndTest {
     }
 
     private void scheduleCosmicDrift() {
-        assertAppended(commandExecutor.execute(
-                new ScheduleConcert("ct-1"),
-                new ScheduleConcertRequest(
-                        "Cosmic Drift",
-                        LocalDateTime.of(2026, 11, 14, 20, 0), LocalTime.of(19, 0),
-                        200, 45, 6),
-                eventLog.lastSequenceNumber()));
+        assertAppended(commandExecutor.execute(new ScheduleConcertCommand(
+                "ct-1",
+                "Cosmic Drift",
+                LocalDateTime.of(2026, 11, 14, 20, 0), LocalTime.of(19, 0),
+                200, 45, 6)));
     }
 
     private void scheduleLyricalStorm() {
-        assertAppended(commandExecutor.execute(
-                new ScheduleConcert("ct-2"),
-                new ScheduleConcertRequest(
-                        "Lyrical Storm",
-                        LocalDateTime.of(2026, 12, 5, 21, 0), LocalTime.of(20, 0),
-                        20, 500, 8),
-                eventLog.lastSequenceNumber()));
+        assertAppended(commandExecutor.execute(new ScheduleConcertCommand(
+                "ct-2",
+                "Lyrical Storm",
+                LocalDateTime.of(2026, 12, 5, 21, 0), LocalTime.of(20, 0),
+                20, 500, 8)));
     }
 
     private void registerKit() {
@@ -198,17 +187,11 @@ class EndToEndTest {
     }
 
     private void register(String customerId, String email) {
-        assertAppended(commandExecutor.execute(
-                new RegisterCustomer(customerId),
-                new RegisterCustomerRequest(email),
-                eventLog.lastSequenceNumber()));
+        assertAppended(commandExecutor.execute(new RegisterCustomerCommand(customerId, email)));
     }
 
-    private void purchase(String ticketId, String concertId, String customerId, int quantity) {
+    private void purchase(String concertId, String customerId, String ticketId, int quantity) {
         assertAppended(commandExecutor.execute(
-                new PurchaseTickets(ticketId),
-                new PurchaseTicketsRequest(concertId, customerId, quantity),
-                availableConcerts,
-                availableConcerts.lastSequenceNumber()));
+                new PurchaseTicketsCommand(concertId, customerId, ticketId, quantity)));
     }
 }

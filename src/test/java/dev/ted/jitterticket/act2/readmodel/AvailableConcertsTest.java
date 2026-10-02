@@ -92,6 +92,27 @@ class AvailableConcertsTest {
                 .containsExactly("ct-sooner", "ct-later");
     }
 
+    @Test
+    void concertAvailable_TicketPriceForReturnsItsPrice() {
+        AvailableConcerts availableConcerts = given(
+                concertScheduled("ct-1").withCapacity(20).withTicketPrice(45));
+
+        assertThat(availableConcerts.ticketPriceFor("ct-1"))
+                .contains(new dev.ted.jitterticket.act2.command.TicketPriceSnapshot(45));
+    }
+
+    @Test
+    void concertSoldOutOrUnknown_TicketPriceForIsEmpty() {
+        AvailableConcerts availableConcerts = given(
+                concertScheduled("ct-1").withCapacity(5),
+                ticketsSold("ct-1").withQuantity(5));
+
+        assertThat(availableConcerts.ticketPriceFor("ct-1"))
+                .isEmpty();
+        assertThat(availableConcerts.ticketPriceFor("ct-unknown"))
+                .isEmpty();
+    }
+
     // The board's checkpoints (facilitator's guide, 3.7)
 
     @Test

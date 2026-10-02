@@ -13,7 +13,7 @@ class EventLogTest {
     private final Event ticketsSold = ticketsSold("ct-1").build();
 
     @Test
-    void appendAssignsSequenceNumbersStartingAt1() {
+    void eventsAppended_SequenceNumbersStartAt1() {
         EventLog eventLog = new EventLog();
 
         eventLog.append(concertScheduled);
@@ -26,7 +26,7 @@ class EventLogTest {
     }
 
     @Test
-    void appendWithExpectedLastSequenceNumber_AppendsWhenItMatches() {
+    void expectedLastSequenceNumberMatches_EventAppended() {
         EventLog eventLog = new EventLog();
         eventLog.append(concertScheduled);
 
@@ -35,7 +35,7 @@ class EventLogTest {
     }
 
     @Test
-    void appendWithExpectedLastSequenceNumber_RefusesWhenLogHasMovedOn() {
+    void logHasMovedOn_EventNotAppended() {
         EventLog eventLog = new EventLog();
         eventLog.append(concertScheduled);
         eventLog.append(customerRegistered);

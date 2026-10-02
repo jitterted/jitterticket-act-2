@@ -1,6 +1,8 @@
 package dev.ted.jitterticket.act2.readmodel;
 
 import dev.ted.jitterticket.act2.SequencedEvent;
+import dev.ted.jitterticket.act2.command.BookedDatesSnapshot;
+import dev.ted.jitterticket.act2.command.BookedDatesSource;
 import dev.ted.jitterticket.act2.event.ConcertRescheduled;
 import dev.ted.jitterticket.act2.event.ConcertScheduled;
 
@@ -9,11 +11,12 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Feeds the venue calendar: which dates are booked, and by whom.
  */
-public class BookedDates implements ReadModel {
+public class BookedDates implements ReadModel, BookedDatesSource {
 
     public record BookedDate(LocalDate date, String artist) {
     }
@@ -46,6 +49,14 @@ public class BookedDates implements ReadModel {
         return bookedDatesByConcertId.values().stream()
                                      .sorted(Comparator.comparing(BookedDate::date))
                                      .toList();
+    }
+
+    @Override
+    public BookedDatesSnapshot snapshot() {
+        return new BookedDatesSnapshot(
+                bookedDatesByConcertId.entrySet().stream()
+                                      .collect(Collectors.toMap(Map.Entry::getKey,
+                                                                entry -> entry.getValue().date())));
     }
 
     @Override

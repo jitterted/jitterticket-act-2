@@ -68,10 +68,24 @@ class BookedDatesTest {
                 .isEqualTo(2);
     }
 
+    @Test
+    void concertsScheduled_SnapshotHoldsEachConcertsDate() {
+        BookedDates bookedDates = given(
+                concertScheduled("ct-1")
+                        .withShowDateTime(LocalDateTime.of(2026, 11, 14, 20, 0)),
+                concertScheduled("ct-2")
+                        .withShowDateTime(LocalDateTime.of(2026, 12, 5, 21, 0)));
+
+        assertThat(bookedDates.snapshot().bookedDates())
+                .containsExactlyInAnyOrder(
+                        LocalDate.of(2026, 11, 14),
+                        LocalDate.of(2026, 12, 5));
+    }
+
     // The board's checkpoint (facilitator's guide, 3.7)
 
     @Test
-    void scriptedRunUpToSeq8_TwoBookedDatesAndLsn8() {
+    void scriptedRunUpToSeq8_TwoDatesBookedAndLastSequenceNumberIs8() {
         BookedDates bookedDates = given(ScriptedRun.upToSeq(8));
 
         assertThat(bookedDates.bookedDates())
