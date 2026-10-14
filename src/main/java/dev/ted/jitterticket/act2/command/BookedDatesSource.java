@@ -11,10 +11,10 @@ package dev.ted.jitterticket.act2.command;
  */
 public interface BookedDatesSource {
 
-    BookedDatesSnapshot snapshot();
+    BookedDatesDecisionContext decisionContext();
 
     /**
-     * The sequence number the snapshot is as of.
+     * The sequence number the decision context is as of.
      */
     long lastSequenceNumber();
 }

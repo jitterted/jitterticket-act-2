@@ -16,7 +16,7 @@ class ScheduleConcertDeciderTest {
     @Test
     void dateFree_GeneratesConcertScheduled() {
         // GIVEN: date is not booked
-        BookedDatesSnapshot snapshot = new BookedDatesSnapshot(Map.of());
+        BookedDatesDecisionContext decisionContext = new BookedDatesDecisionContext(Map.of());
         ScheduleConcertCommand command = new ScheduleConcertCommand(
                 "ct-1",
                 "Cosmic Drift",
@@ -24,7 +24,7 @@ class ScheduleConcertDeciderTest {
                 200, 45, 6);
 
         // WHEN
-        CommandResult result = ScheduleConcertDecider.decide(command, snapshot);
+        CommandResult result = ScheduleConcertDecider.decide(command, decisionContext);
 
         // THEN
         assertThat(result.event())
@@ -38,7 +38,7 @@ class ScheduleConcertDeciderTest {
     void dateAlreadyBooked_ThrowsDateAlreadyBookedException() {
         // GIVEN: 2026-11-14 is already booked
         LocalDate bookedDate = LocalDate.of(2026, 11, 14);
-        BookedDatesSnapshot snapshot = new BookedDatesSnapshot(Map.of("ct-2", bookedDate));
+        BookedDatesDecisionContext decisionContext = new BookedDatesDecisionContext(Map.of("ct-2", bookedDate));
         ScheduleConcertCommand command = new ScheduleConcertCommand(
                 "ct-1",
                 "Cosmic Drift",
@@ -46,7 +46,7 @@ class ScheduleConcertDeciderTest {
                 200, 45, 6);
 
         // WHEN / THEN
-        assertThatThrownBy(() -> ScheduleConcertDecider.decide(command, snapshot))
+        assertThatThrownBy(() -> ScheduleConcertDecider.decide(command, decisionContext))
                 .isInstanceOf(DateAlreadyBookedException.class)
                 .hasMessageContaining(bookedDate.toString());
     }

@@ -9,9 +9,9 @@ import java.util.stream.Collectors;
  * What the schedule and reschedule deciders need to know:
  * which concert holds each booked date.
  */
-public record BookedDatesSnapshot(Map<String, LocalDate> bookedDatesByConcertId) {
+public record BookedDatesDecisionContext(Map<String, LocalDate> bookedDatesByConcertId) {
 
-    public BookedDatesSnapshot {
+    public BookedDatesDecisionContext {
         bookedDatesByConcertId = Map.copyOf(bookedDatesByConcertId);
     }
 

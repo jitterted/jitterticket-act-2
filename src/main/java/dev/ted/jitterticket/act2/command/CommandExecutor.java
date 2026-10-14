@@ -6,10 +6,10 @@ import dev.ted.jitterticket.act2.readmodel.AvailableConcerts;
 /**
  * Executes a command. For each command it:
  * <ol>
- *     <li>asks the read model the decision needs for a snapshot, and for its last sequence number,</li>
- *     <li>hands the command and the snapshot to the command's decider,</li>
+ *     <li>asks the read model this command depends on for its decision context and last sequence number,</li>
+ *     <li>hands the command and the decision context to the command's decider,</li>
  *     <li>appends the decided event, but only if the log's last sequence number
- *         is still the one the snapshot was built from.</li>
+ *         is still the one the decision context was built from.</li>
  * </ol>
  * Booked dates come from a {@link BookedDatesSource}: pass the BookedDates read model,
  * or a {@link LiveBookedDatesQuery} to decide from the log itself.
@@ -29,28 +29,28 @@ public class CommandExecutor {
     }
 
     public ExecutionResult execute(ScheduleConcertCommand command) {
-        BookedDatesSnapshot snapshot = bookedDates.snapshot();
+        BookedDatesDecisionContext decisionContext = bookedDates.decisionContext();
         long lastSequenceNumber = bookedDates.lastSequenceNumber();
-        CommandResult result = ScheduleConcertDecider.decide(command, snapshot);
+        CommandResult result = ScheduleConcertDecider.decide(command, decisionContext);
         return append(result, lastSequenceNumber);
     }
 
     public ExecutionResult execute(RescheduleConcertCommand command) {
-        BookedDatesSnapshot snapshot = bookedDates.snapshot();
+        BookedDatesDecisionContext decisionContext = bookedDates.decisionContext();
         long lastSequenceNumber = bookedDates.lastSequenceNumber();
-        CommandResult result = RescheduleConcertDecider.decide(command, snapshot);
+        CommandResult result = RescheduleConcertDecider.decide(command, decisionContext);
         return append(result, lastSequenceNumber);
     }
 
     public ExecutionResult execute(PurchaseTicketsCommand command) {
-        TicketPriceSnapshot snapshot = availableConcerts.ticketPriceFor(command.concertId()).orElseThrow();
+        TicketPriceDecisionContext decisionContext = availableConcerts.ticketPriceFor(command.concertId()).orElseThrow();
         long lastSequenceNumber = availableConcerts.lastSequenceNumber();
-        CommandResult result = PurchaseTicketsDecider.decide(command, snapshot);
+        CommandResult result = PurchaseTicketsDecider.decide(command, decisionContext);
         return append(result, lastSequenceNumber);
     }
 
     /**
-     * Registering needs no snapshot, so there's no read model to ask:
+     * Registering needs no decision context, so there's no read model to ask:
      * the decision is as of the log itself.
      */
     public ExecutionResult execute(RegisterCustomerCommand command) {

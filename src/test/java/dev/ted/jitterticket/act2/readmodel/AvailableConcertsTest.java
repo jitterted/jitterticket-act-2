@@ -98,7 +98,7 @@ class AvailableConcertsTest {
                 concertScheduled("ct-1").withCapacity(20).withTicketPrice(45));
 
         assertThat(availableConcerts.ticketPriceFor("ct-1"))
-                .contains(new dev.ted.jitterticket.act2.command.TicketPriceSnapshot(45));
+                .contains(new dev.ted.jitterticket.act2.command.TicketPriceDecisionContext(45));
     }
 
     @Test

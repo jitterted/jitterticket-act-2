@@ -16,8 +16,8 @@ Events, commands and read models each have their own package: `event`, `command`
 - **`EventLog`.** Append-only and ordered. It gives each appended event its sequence number (from 1) as a `SequencedEvent`, and hands it to every registered `ReadModel`.
 - **`ReadModel`.** `apply(SequencedEvent)`, and `lastSequenceNumber()`: the station's LSN.
 - **Two finished read models.** `AvailableConcerts` and `BookedDates`, each with tests.
-- **Four commands.** `ScheduleConcertCommand`, `RescheduleConcertCommand`, `RegisterCustomerCommand` and `PurchaseTicketsCommand`: the data a form would POST. Each has a `...Decider` that takes the command and a snapshot (`BookedDatesSnapshot` or `TicketPriceSnapshot`; registering needs none) and returns a `CommandResult` holding the event it decided on. Scheduling or rescheduling onto a date another concert holds throws `DateAlreadyBookedException`.
-- **`CommandExecutor`.** Executes a command: it asks the read model the decision needs for a snapshot and its `lastSequenceNumber()`, calls the decider, then appends the event, but only if the log's last sequence number is still the one the snapshot was built from. It returns `ExecutionResult.Appended` or `ExecutionResult.Conflict`.
+- **Four commands.** `ScheduleConcertCommand`, `RescheduleConcertCommand`, `RegisterCustomerCommand` and `PurchaseTicketsCommand`: the data a form would POST. Each has a `...Decider` that takes the command and a decision context (`BookedDatesDecisionContext` or `TicketPriceDecisionContext`; registering needs none) and returns a `CommandResult` holding the event it decided on. Scheduling or rescheduling onto a date another concert holds throws `DateAlreadyBookedException`.
+- **`CommandExecutor`.** Executes a command: it asks the read model this command depends on for its decision context and `lastSequenceNumber()`, calls the decider, then appends the event, but only if the log's last sequence number is still the one the decision context was built from. It returns `ExecutionResult.Appended` or `ExecutionResult.Conflict`.
 - **`EndToEndTest`.** The whole loop: run a command through the `CommandExecutor`, and check what the read models show. One test plays seq 1 to 8 as commands and checks that the log comes out as the Scripted Run.
 - **`EventBuilders`** (in `src/test`). Builders for events, so a test spells out only the values its assertions depend on: `concertScheduled("ct-1").withCapacity(20)`.
 - **`ScriptedRun`** (in `src/test`). Seq 1 to 15 from the board, for tests that check the board's checkpoints (the guide's 3.7).
@@ -30,7 +30,7 @@ Every read model's `switch` ends with `default -> { }`. Each event that lands th
 
 Read models: GIVEN events, THEN the query returns the expected state.
 
-Commands: GIVEN a snapshot, WHEN the decider decides, THEN the result holds the expected event.
+Commands: GIVEN a decision context, WHEN the decider decides, THEN the result holds the expected event.
 
 A read model test:
 

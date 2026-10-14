@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * The alternative to deciding from a read model.
  * <p>
- * A read model such as BookedDates can be behind the log, so a snapshot taken from it
+ * A read model such as BookedDates can be behind the log, so a decision context taken from it
  * may be stale. This query instead reads the event log every time it's asked,
  * so the command always decides on the latest booked dates.
  * It applies events the same way the BookedDates read model does.
@@ -28,9 +28,9 @@ import java.util.Map;
  * then schedule a concert on a date booked by the event it missed
  * (see CommandExecutorTest's {@code ..._FromStaleReadModel_...} and {@code ..._FromLiveQuery_...}):
  * <ul>
- *     <li>With BookedDates: the stale snapshot says the date is free, the decider approves,
+ *     <li>With BookedDates: the stale decision context says the date is free, the decider approves,
  *         and only the sequence-number check saves us &mdash; the result is a {@code Conflict}.</li>
- *     <li>With this query: the snapshot is as of the latest event, so the decider itself
+ *     <li>With this query: the decision context is as of the latest event, so the decider itself
  *         rejects it with {@code DateAlreadyBookedException}, and there's no conflict to retry.</li>
  * </ul>
  * The trade-off: this query replays the whole log on every command, while the read model
@@ -45,7 +45,7 @@ public class LiveBookedDatesQuery implements BookedDatesSource {
     }
 
     @Override
-    public BookedDatesSnapshot snapshot() {
+    public BookedDatesDecisionContext decisionContext() {
         Map<String, LocalDate> datesByConcertId = new HashMap<>();
         for (SequencedEvent sequencedEvent : eventLog.events()) {
             switch (sequencedEvent.event()) {
@@ -59,7 +59,7 @@ public class LiveBookedDatesQuery implements BookedDatesSource {
                 }
             }
         }
-        return new BookedDatesSnapshot(datesByConcertId);
+        return new BookedDatesDecisionContext(datesByConcertId);
     }
 
     @Override

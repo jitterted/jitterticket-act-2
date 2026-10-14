@@ -6,9 +6,9 @@ import java.time.LocalDate;
 
 public final class ScheduleConcertDecider {
 
-    public static CommandResult decide(ScheduleConcertCommand command, BookedDatesSnapshot snapshot) {
+    public static CommandResult decide(ScheduleConcertCommand command, BookedDatesDecisionContext decisionContext) {
         LocalDate showDate = command.showDateTime().toLocalDate();
-        if (snapshot.isBooked(showDate)) {
+        if (decisionContext.isBooked(showDate)) {
             throw new DateAlreadyBookedException(showDate);
         }
         return new CommandResult(new ConcertScheduled(

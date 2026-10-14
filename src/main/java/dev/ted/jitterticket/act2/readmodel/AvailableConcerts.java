@@ -1,7 +1,7 @@
 package dev.ted.jitterticket.act2.readmodel;
 
 import dev.ted.jitterticket.act2.SequencedEvent;
-import dev.ted.jitterticket.act2.command.TicketPriceSnapshot;
+import dev.ted.jitterticket.act2.command.TicketPriceDecisionContext;
 import dev.ted.jitterticket.act2.event.ConcertRescheduled;
 import dev.ted.jitterticket.act2.event.ConcertScheduled;
 import dev.ted.jitterticket.act2.event.TicketsSold;
@@ -88,9 +88,9 @@ public class AvailableConcerts implements ReadModel {
                        .filter(this::hasTicketsLeft);
     }
 
-    public Optional<TicketPriceSnapshot> ticketPriceFor(String concertId) {
+    public Optional<TicketPriceDecisionContext> ticketPriceFor(String concertId) {
         return findConcert(concertId)
-                .map(concert -> new TicketPriceSnapshot(concert.ticketPrice()));
+                .map(concert -> new TicketPriceDecisionContext(concert.ticketPrice()));
     }
 
     @Override

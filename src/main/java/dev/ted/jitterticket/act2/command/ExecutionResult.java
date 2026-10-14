@@ -14,7 +14,7 @@ public sealed interface ExecutionResult {
     }
 
     /**
-     * The snapshot was built from a read model as of expectedLastSequenceNumber,
+     * The decision context was built from a read model as of expectedLastSequenceNumber,
      * but the log had moved past it, so nothing was appended.
      */
     record Conflict(long expectedLastSequenceNumber,

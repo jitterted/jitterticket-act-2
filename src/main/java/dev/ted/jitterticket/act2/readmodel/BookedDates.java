@@ -1,7 +1,7 @@
 package dev.ted.jitterticket.act2.readmodel;
 
 import dev.ted.jitterticket.act2.SequencedEvent;
-import dev.ted.jitterticket.act2.command.BookedDatesSnapshot;
+import dev.ted.jitterticket.act2.command.BookedDatesDecisionContext;
 import dev.ted.jitterticket.act2.command.BookedDatesSource;
 import dev.ted.jitterticket.act2.event.ConcertRescheduled;
 import dev.ted.jitterticket.act2.event.ConcertScheduled;
@@ -52,8 +52,8 @@ public class BookedDates implements ReadModel, BookedDatesSource {
     }
 
     @Override
-    public BookedDatesSnapshot snapshot() {
-        return new BookedDatesSnapshot(
+    public BookedDatesDecisionContext decisionContext() {
+        return new BookedDatesDecisionContext(
                 bookedDatesByConcertId.entrySet().stream()
                                       .collect(Collectors.toMap(Map.Entry::getKey,
                                                                 entry -> entry.getValue().date())));

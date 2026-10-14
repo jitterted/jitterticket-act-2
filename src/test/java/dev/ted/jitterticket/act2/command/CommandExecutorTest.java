@@ -48,7 +48,7 @@ class CommandExecutorTest {
         ExecutionResult result = commandExecutor.execute(
                 new PurchaseTicketsCommand("ct-1", "cu-1", "t-1", 6));
 
-        // THEN: the price came from the Available Concerts snapshot
+        // THEN: the price came from the Available Concerts decision context
         assertThat(result)
                 .isEqualTo(new ExecutionResult.Appended(
                         new SequencedEvent(3, new TicketsSold("ct-1", "cu-1", "t-1", 6, 270))));

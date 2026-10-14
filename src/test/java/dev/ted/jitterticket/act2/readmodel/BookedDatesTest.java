@@ -69,14 +69,14 @@ class BookedDatesTest {
     }
 
     @Test
-    void concertsScheduled_SnapshotHoldsEachConcertsDate() {
+    void concertsScheduled_DecisionContextHoldsEachConcertsDate() {
         BookedDates bookedDates = given(
                 concertScheduled("ct-1")
                         .withShowDateTime(LocalDateTime.of(2026, 11, 14, 20, 0)),
                 concertScheduled("ct-2")
                         .withShowDateTime(LocalDateTime.of(2026, 12, 5, 21, 0)));
 
-        assertThat(bookedDates.snapshot().bookedDates())
+        assertThat(bookedDates.decisionContext().bookedDates())
                 .containsExactlyInAnyOrder(
                         LocalDate.of(2026, 11, 14),
                         LocalDate.of(2026, 12, 5));

@@ -16,11 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LiveBookedDatesQueryTest {
 
     @Test
-    void noEvents_SnapshotIsEmptyAndLastSequenceNumberIsZero() {
+    void noEvents_DecisionContextIsEmptyAndLastSequenceNumberIsZero() {
         EventLog eventLog = new EventLog();
         LiveBookedDatesQuery query = new LiveBookedDatesQuery(eventLog);
 
-        assertThat(query.snapshot().bookedDates())
+        assertThat(query.decisionContext().bookedDates())
                 .isEmpty();
         assertThat(query.lastSequenceNumber())
                 .isZero();
@@ -33,7 +33,7 @@ class LiveBookedDatesQueryTest {
                         .withShowDateTime(LocalDateTime.of(2026, 11, 14, 20, 0)));
         LiveBookedDatesQuery query = new LiveBookedDatesQuery(eventLog);
 
-        assertThat(query.snapshot().bookedDates())
+        assertThat(query.decisionContext().bookedDates())
                 .containsExactly(LocalDate.of(2026, 11, 14));
         assertThat(query.lastSequenceNumber())
                 .isEqualTo(1);
@@ -48,7 +48,7 @@ class LiveBookedDatesQueryTest {
                         .withNewShowDateTime(LocalDateTime.of(2026, 11, 21, 19, 30)));
         LiveBookedDatesQuery query = new LiveBookedDatesQuery(eventLog);
 
-        assertThat(query.snapshot().bookedDates())
+        assertThat(query.decisionContext().bookedDates())
                 .containsExactly(LocalDate.of(2026, 11, 21));
         assertThat(query.lastSequenceNumber())
                 .isEqualTo(2);
@@ -61,7 +61,7 @@ class LiveBookedDatesQueryTest {
                         .withNewShowDateTime(LocalDateTime.of(2026, 11, 21, 19, 30)));
         LiveBookedDatesQuery query = new LiveBookedDatesQuery(eventLog);
 
-        assertThat(query.snapshot().bookedDates())
+        assertThat(query.decisionContext().bookedDates())
                 .isEmpty();
     }
 
@@ -74,7 +74,7 @@ class LiveBookedDatesQueryTest {
                 ticketsSold("ct-1"));
         LiveBookedDatesQuery query = new LiveBookedDatesQuery(eventLog);
 
-        assertThat(query.snapshot().bookedDates())
+        assertThat(query.decisionContext().bookedDates())
                 .containsExactly(LocalDate.of(2026, 11, 14));
         assertThat(query.lastSequenceNumber())
                 .isEqualTo(3);
@@ -85,7 +85,7 @@ class LiveBookedDatesQueryTest {
         EventLog eventLog = given(ScriptedRun.upToSeq(8));
         LiveBookedDatesQuery query = new LiveBookedDatesQuery(eventLog);
 
-        assertThat(query.snapshot().bookedDates())
+        assertThat(query.decisionContext().bookedDates())
                 .containsExactlyInAnyOrder(
                         LocalDate.of(2026, 11, 21),
                         LocalDate.of(2026, 12, 5));
@@ -124,13 +124,13 @@ class LiveBookedDatesQueryTest {
         bookedDates.apply(eventLog.events().getFirst());
         LiveBookedDatesQuery query = new LiveBookedDatesQuery(eventLog);
 
-        // THEN: the read model's snapshot is stale...
-        assertThat(bookedDates.snapshot().isBooked(LocalDate.of(2026, 12, 5)))
+        // THEN: the read model's decision context is stale...
+        assertThat(bookedDates.decisionContext().isBooked(LocalDate.of(2026, 12, 5)))
                 .isFalse();
         assertThat(bookedDates.lastSequenceNumber())
                 .isEqualTo(1);
         // ...while the live query is as of the latest event
-        assertThat(query.snapshot().isBooked(LocalDate.of(2026, 12, 5)))
+        assertThat(query.decisionContext().isBooked(LocalDate.of(2026, 12, 5)))
                 .isTrue();
         assertThat(query.lastSequenceNumber())
                 .isEqualTo(2);
@@ -143,8 +143,8 @@ class LiveBookedDatesQueryTest {
         eventLog.appendAll(events);
         LiveBookedDatesQuery query = new LiveBookedDatesQuery(eventLog);
 
-        assertThat(query.snapshot())
-                .isEqualTo(bookedDates.snapshot());
+        assertThat(query.decisionContext())
+                .isEqualTo(bookedDates.decisionContext());
         assertThat(query.lastSequenceNumber())
                 .isEqualTo(bookedDates.lastSequenceNumber());
     }
