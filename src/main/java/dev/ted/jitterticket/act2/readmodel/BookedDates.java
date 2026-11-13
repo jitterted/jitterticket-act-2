@@ -37,7 +37,7 @@ public class BookedDates implements ReadModel, BookedDatesSource {
                     (concertId, booked) -> new BookedDate(rescheduled.newShowDateTime().toLocalDate(),
                                                   booked.artist()));
             default -> {
-                // Read, but not applied: most events end up here.
+                // Seen, but not applied: most events end up here.
             }
         }
     }

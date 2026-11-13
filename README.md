@@ -24,7 +24,7 @@ Events, commands and read models each have their own package: `event`, `command`
 
 ## The `default` branch
 
-Every read model's `switch` ends with `default -> { }`. Each event that lands there is one the station counted as READ but not APPLIED.
+Every read model's `switch` ends with `default -> { }`. Each event that lands there is one the station counted as SEEN but not APPLIED.
 
 ## Test shape
 

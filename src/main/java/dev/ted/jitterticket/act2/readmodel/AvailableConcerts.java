@@ -6,6 +6,7 @@ import dev.ted.jitterticket.act2.event.ConcertRescheduled;
 import dev.ted.jitterticket.act2.event.ConcertScheduled;
 import dev.ted.jitterticket.act2.event.TicketsSold;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Comparator;
@@ -14,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * Feeds the "Available Concerts" screen: the concerts you can still buy tickets for.
@@ -45,38 +47,45 @@ public class AvailableConcerts implements ReadModel {
         switch (sequencedEvent.event()) {
             case ConcertScheduled scheduled -> {
                 concerts.put(scheduled.concertId(),
-                             new Concert(scheduled.concertId(),
-                                         scheduled.artist(),
-                                         scheduled.showDateTime(),
-                                         scheduled.doorsTime(),
+                             new Concert(scheduled.concertId(), scheduled.artist(),
+                                         scheduled.showDateTime(), scheduled.doorsTime(),
                                          scheduled.ticketPrice()));
                 ticketsLeftByConcertId.put(scheduled.concertId(), scheduled.capacity());
             }
             case ConcertRescheduled rescheduled -> concerts.computeIfPresent(
                     rescheduled.concertId(),
-                    (concertId, concert) -> new Concert(concert.concertId(),
-                                                        concert.artist(),
-                                                        rescheduled.newShowDateTime(),
-                                                        rescheduled.newDoorsTime(),
-                                                        concert.ticketPrice()));
+                    (_, concert) -> new Concert(concert.concertId(), concert.artist(),
+                                rescheduled.newShowDateTime(), rescheduled.newDoorsTime(),
+                                concert.ticketPrice()));
             case TicketsSold sold -> ticketsLeftByConcertId.computeIfPresent(
-                    sold.concertId(),
-                    (concertId, ticketsLeft) -> ticketsLeft - sold.quantity());
-            default -> {
-                // Read, but not applied: this read model doesn't care about it.
-            }
+                    sold.concertId(), (_, ticketsLeft) -> ticketsLeft - sold.quantity());
+            default -> {} // Seen, but not applied: this read model doesn't care about it.
         }
     }
 
     /**
-     * "Read model, give me the list of available concerts."
-     * Only concerts that still have tickets left.
+     * Only concerts that still have tickets left, sorted in date order.
      */
     public List<Concert> availableConcerts() {
         return concerts.values().stream()
                        .filter(this::hasTicketsLeft)
                        .sorted(Comparator.comparing(Concert::showDateTime))
                        .toList();
+    }
+
+    /**
+     * Only concerts whose show date is today or in the future relative to "now".
+     * A concert today still shows up if tickets are available.
+     */
+    public List<Concert> upcomingConcerts(LocalDateTime now) {
+        LocalDate today = now.toLocalDate();
+        return availableConcerts().stream()
+                                  .filter(onOrAfter(today))
+                                  .toList();
+    }
+
+    private Predicate<Concert> onOrAfter(LocalDate today) {
+        return concert -> !concert.showDateTime().toLocalDate().isBefore(today);
     }
 
     /**

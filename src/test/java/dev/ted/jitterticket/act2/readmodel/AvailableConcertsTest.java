@@ -50,11 +50,18 @@ class AvailableConcertsTest {
                         .withNewShowDateTime(LocalDateTime.of(2026, 11, 21, 19, 30))
                         .withNewDoorsTime(LocalTime.of(18, 30)));
 
-        AvailableConcerts.Concert concert = availableConcerts.findConcert("ct-1").orElseThrow();
-        assertThat(concert.showDateTime())
-                .isEqualTo(LocalDateTime.of(2026, 11, 21, 19, 30));
-        assertThat(concert.doorsTime())
-                .isEqualTo(LocalTime.of(18, 30));
+        assertThat(availableConcerts.findConcert("ct-1"))
+                .as("No Concert with id was found: ct-1")
+                .isPresent()
+                .map(AvailableConcerts.Concert::showDateTime)
+                .as("Should have the new show date-time")
+                .hasValue(LocalDateTime.of(2026, 11, 21, 19, 30));
+        assertThat(availableConcerts.findConcert("ct-1"))
+                .as("No Concert with id was found: ct-1")
+                .isPresent()
+                .map(AvailableConcerts.Concert::doorsTime)
+                .as("Should have the new doors time")
+                .hasValue(LocalTime.of(18, 30));
     }
 
     @Test
@@ -111,6 +118,70 @@ class AvailableConcertsTest {
                 .isEmpty();
         assertThat(availableConcerts.ticketPriceFor("ct-unknown"))
                 .isEmpty();
+    }
+
+    @Test
+    void upcomingConcerts_ExcludesConcertsOnEarlierDays() {
+        AvailableConcerts availableConcerts = given(
+                concertScheduled("ct-yesterday").withShowDateTime(LocalDateTime.of(2026, 11, 13, 20, 0)),
+                concertScheduled("ct-tomorrow").withShowDateTime(LocalDateTime.of(2026, 11, 15, 20, 0)));
+
+        LocalDateTime now = LocalDateTime.of(2026, 11, 14, 12, 0);
+
+        assertThat(availableConcerts.upcomingConcerts(now))
+                .extracting(AvailableConcerts.Concert::concertId)
+                .containsExactly("ct-tomorrow");
+    }
+
+    @Test
+    void upcomingConcerts_IncludesConcertLaterTheSameDay() {
+        AvailableConcerts availableConcerts = given(
+                concertScheduled("ct-tonight").withShowDateTime(LocalDateTime.of(2026, 11, 14, 20, 0)));
+
+        LocalDateTime now = LocalDateTime.of(2026, 11, 14, 9, 0);
+
+        assertThat(availableConcerts.upcomingConcerts(now))
+                .extracting(AvailableConcerts.Concert::concertId)
+                .containsExactly("ct-tonight");
+    }
+
+    @Test
+    void upcomingConcerts_IncludesConcertEarlierTheSameDay() {
+        AvailableConcerts availableConcerts = given(
+                concertScheduled("ct-matinee").withShowDateTime(LocalDateTime.of(2026, 11, 14, 14, 0)));
+
+        LocalDateTime now = LocalDateTime.of(2026, 11, 14, 23, 0);
+
+        assertThat(availableConcerts.upcomingConcerts(now))
+                .as("Concert on the same day should still be listed, even after its show time")
+                .extracting(AvailableConcerts.Concert::concertId)
+                .containsExactly("ct-matinee");
+    }
+
+    @Test
+    void upcomingConcerts_ExcludesSoldOutConcerts() {
+        AvailableConcerts availableConcerts = given(
+                concertScheduled("ct-1").withCapacity(5)
+                                        .withShowDateTime(LocalDateTime.of(2026, 12, 5, 21, 0)),
+                ticketsSold("ct-1").withQuantity(5));
+
+        LocalDateTime now = LocalDateTime.of(2026, 11, 14, 12, 0);
+
+        assertThat(availableConcerts.upcomingConcerts(now))
+                .isEmpty();
+    }
+
+    @Test
+    void upcomingConcerts_ListedInShowDateOrder() {
+        AvailableConcerts availableConcerts = given(
+                concertScheduled("ct-later").withShowDateTime(LocalDateTime.of(2026, 12, 5, 21, 0)),
+                concertScheduled("ct-sooner").withShowDateTime(LocalDateTime.of(2026, 11, 20, 20, 0)));
+
+        LocalDateTime now = LocalDateTime.of(2026, 11, 14, 12, 0);
+
+        assertThat(availableConcerts.upcomingConcerts(now))
+                .extracting(AvailableConcerts.Concert::concertId)
+                .containsExactly("ct-sooner", "ct-later");
     }
 
     // The board's checkpoints (facilitator's guide, 3.7)

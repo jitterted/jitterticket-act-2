@@ -44,7 +44,7 @@ class BookedDatesTest {
     void customerAndTicketEvents_DontBookAnything() {
         BookedDates bookedDates = given(
                 customerRegistered("cu-1"),
-                ticketsSold("ct-1"));
+                ticketsSold("ct-1")); // invalid test setup
 
         assertThat(bookedDates.bookedDates())
                 .isEmpty();
